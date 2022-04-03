@@ -1,0 +1,152 @@
+---
+title: "case_control_exposure"
+author: "SL"
+date: "10/19/2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(survival)
+library(splines)
+library(broom)
+library(dlnm)
+library(plotly)
+
+```
+
+Join case-control dataframe (from RProject `daily_hsi`) with corrected daily indices (from RProject `nldas2_get) 
+
+
+Inputs: [indices], 'case_control_df`
+Output: `cc_exposure_df`
+
+
+
+```{r}
+
+case_control_df <-
+  read_rds("data/outcome/case_control_df.rds") %>%
+    mutate(installation_name = 
+     recode(installation_name,
+        "mcb_camp_lejeune" = "MCB Camp Lejeune",
+        "mcb_camp_pendleton" = "MCB Camp Pendleton",
+        "eglin_afb"= "Eglin AFB",
+        "fort_benning_ga" = "Fort Benning",
+        "fort_bliss" = "Fort Bliss",
+        "fort_bragg" = "Fort Bragg",
+        "fort_campbell" = "Fort Campbell",
+        "fort_gordon" = "Fort Gordon",
+        "fort_hood" = "Fort Hood",
+        "ntc_and_fort_irwin" = "Fort Irwin",
+        "fort_jackson" = "Fort Jackson",
+        "fort_knox" = "Fort Knox",
+        "fort_leonard_wood" = "Fort Leonard Wood",
+        "fort_polk" = "Fort Polk",
+        "fort_riley" = "Fort Riley",
+        "fort_sill" = "Fort Sill",
+        "fort_stewart" = "Fort Stewart",
+        "fort_sam_houston" = "Joint Base San Antonio",
+        "mcrd_beaufort_parris_island" = "MCRD Parris Island",
+        "pensacola" = "NAS Pensacola",
+        "portsmouth" = "NMC Portsmouth",
+        "mcb_quantico" = "MCB Quantico",
+        "mcrd_san_diego" = "MCRD San Diego",
+        "twentynine_palms_main_base" = "Twentynine Palms"
+      )) %>% 
+   rename(site_name = installation_name)
+  
+
+#write_rds(case_control_df, file = "data/case_control_df.rds")
+#case_control_df <- read_rds(file = "data/case_control_df.rds")
+
+
+# counts by site
+case_control_df %>% 
+  group_by(site_name) %>% 
+  count() %>% as.data.frame()
+
+```
+
+
+
+## Join case-crossover and daily exposures
+
+```{r}
+
+cc_exposure_df_rod <-
+  case_control_df %>% 
+    left_join(daily_indices_rod,  by = c("site_name", "d_event" = "date")) %>% 
+    filter(year %in% 1996:2019) %>% 
+    mutate(stratum = as_factor(paste(studyid, d_event, sep = "_")))
+
+
+cc_exposure_df_rod
+
+
+
+
+```
+
+
+# Add branch of service and climate region
+```{r}
+
+
+base_service_df <-
+   read_rds(file = "data/base_service_df.rds") %>% 
+    mutate(installation_name = 
+     recode(installation_name,
+        "camp_lejeune" = "MCB Camp Lejeune",
+        "camp_pendleton" = "MCB Camp Pendleton",
+        "eglin_afb"= "Eglin AFB",
+        "fort_benning" = "Fort Benning",
+        "fort_bliss" = "Fort Bliss",
+        "fort_bragg" = "Fort Bragg",
+        "fort_campbell" = "Fort Campbell",
+        "fort_gordon" = "Fort Gordon",
+        "fort_hood" = "Fort Hood",
+        "ntc_and_fort_irwin" = "Fort Irwin",
+        "fort_jackson" = "Fort Jackson",
+        "fort_knox" = "Fort Knox",
+        "fort_leonard_wood" = "Fort Leonard Wood",
+        "fort_polk" = "Fort Polk",
+        "fort_riley" = "Fort Riley",
+        "fort_sill" = "Fort Sill",
+        "fort_stewart" = "Fort Stewart",
+        "jbsa" = "Joint Base San Antonio",
+        "parris_island" = "MCRD Parris Island",
+        "pensacola" = "NAS Pensacola",
+        "portsmouth" = "NMC Portsmouth",
+        "quantico" = "MCB Quantico",
+        "mcrd_san_diego" = "MCRD San Diego",
+        "twentynine_palms" = "Twentynine Palms"
+      )) %>% 
+   rename(site_name = installation_name)
+
+base_service_df %>% as.data.frame() 
+
+
+
+# Add installation branch of service and climate region
+
+cc_exposure_df_rod <-
+  cc_exposure_df_rod %>% 
+    left_join(base_service_df %>%
+                rename(base_service = service) %>% 
+                dplyr::select(site_name, base_service, region), by = "site_name") 
+
+
+
+
+#write_rds(cc_exposure_df_rod, file = "data/cc_exposure_df_rod.rds")
+
+cc_exposure_df_rod <-
+  read_rds(file = "data/cc_exposure_df_rod.rds")
+```
+
+

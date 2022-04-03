@@ -1,0 +1,80 @@
+---
+title: "daily_indices"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+library(tidyverse)
+library(lubridate)
+library(forcats)
+
+```
+
+
+Input: `nldas_hourly_index_rod`
+Key output: `daily_indices_rod` (temp, hi, wbgt at daily mean, max, min, 0600-local [24])
+
+
+
+Load hourly index dataframe 
+
+```{r}
+
+hourly_nldas <-
+  read_rds(file = "data/nldas_hourly_index_rod.rds")
+
+hourly_nldas %>% 
+  summary()
+
+hourly_nldas %>% 
+  count(site_name) %>% as.data.frame()
+
+```
+
+
+
+# Daily indices
+
+```{r}
+
+# mean, max, min
+daily_indices_rod1 <-
+  hourly_nldas  %>%
+      dplyr::select(-utc_dttm) %>% 
+      group_by(site_name, date = lubridate::date(local_dttm)) %>%
+      dplyr::summarise_at(
+            .vars = vars(tmp_f, hi_f, wbgt_f, tmp_c, hi_c, wbgt_c),
+            .funs = c(mean = "mean", max = "max", min = "min"))
+
+# local daily 0600 indices
+
+daily_indices_rod2 <-
+  hourly_nldas  %>%
+      dplyr::select(-utc_dttm) %>% 
+      group_by(site_name, date = lubridate::date(local_dttm)) %>%
+      dplyr::filter(lubridate::hour(local_dttm) == 6) %>% 
+      rename_with(.fn = ~paste0(., "_0600"), .cols = c("tmp_f", "hi_f", "wbgt_f", "tmp_c", "hi_c", "wbgt_c")) %>% 
+  dplyr::select(-local_dttm)
+      
+  
+
+daily_indices_rod <-
+   daily_indices_rod1 %>% 
+    left_join(daily_indices_rod2, by = c("site_name", "date"))
+    
+  
+# write_rds(daily_indices_rod, "data/daily_indices_rod") # 262,992 rows x 26 columns
+
+
+
+```
+
+
+
+
+
