@@ -27,4 +27,10 @@ Output: plot (.rds), plot (.tiff)
 
 ## 6. `cc_dlnm_map_stratify`
 Map case cross-over function over list of variables/indices; stratified by: region, heat illness type, branch of service 
-Output: plot (.rds), plot (.tiff)
+Output:  plot (.tiff)
+Note: .rds not retained in folder due to file storage size
+
+## 7. 'figures`
+Temperature index figures
+
+

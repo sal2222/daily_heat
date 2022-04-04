@@ -1,0 +1,321 @@
+---
+title: "tables"
+output: 
+  html_document:
+   keep_md: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(broom)
+library(dlnm)
+library(plotly)
+library(lubridate)
+library(corrplot)
+library(table1)
+library(cowplot)
+library(ggrepel)
+library(fitdistrplus)
+library(viridis)
+library(janitor)
+library(patchwork)
+library(Hmisc)
+library(patchwork)
+
+```
+
+
+```{r}
+
+daily_indices <- read_rds(file = "data/daily_indices_rod")
+
+cc_exposure_df <-
+  read_rds(file = "data/cc_exposure_df_rod.rds")
+
+base_service_df <-
+  read_rds(file = "data/base_service_df.rds")
+
+
+```
+
+
+## Outcome table
+```{r}
+
+to_table1 <-
+  cc_exposure_df %>% 
+    filter(case == 1) %>% 
+    dplyr::select(installation_name, source, age, sex, race_ethnic, service, grade, hsi) %>% 
+       mutate(service = recode(service,
+            "A" = "Army",
+            "C" = "Coast Guard",
+            "F" = "Air Force",
+            "M" = "Marine Corps",
+            "N" = "Navy"),
+            source = recode(source,
+            "INPATIENT" = "In-Patient",
+            "OUTPATIENT" = "Out-Patient",
+            "RME" = "Reportable Event"),
+            hsi = recode(hsi,
+            "heat_exhaustion" = "Heat Exhaustion",
+            "heat_stroke" = "Heat Stroke"),
+            sex = recode(sex,
+            "F" = "Female",
+            "M" = "Male",
+            "Z" = "Unknown")
+            ) %>% 
+  left_join(climate_regions, by = "installation_name") %>% 
+  mutate_if(is.character, as.factor) %>% 
+            mutate(age = fct_relevel(age, ">=40", after = Inf))
+
+
+label(to_table1$hsi) <- "HSI Diagnosis"
+label(to_table1$age) <- "Age Group"
+label(to_table1$sex) <- "Sex"
+label(to_table1$race_ethnic) <- "Race/Ethnicity"
+label(to_table1$grade) <- "Grade Group"
+label(to_table1$service) <- "Service Branch"
+label(to_table1$region) <- "NOAA NCEI Climate Region"
+
+
+table1::table1(~ hsi + sex + age + sex + grade + race_ethnic  | source, data = to_table1)
+table1::table1(~ hsi + sex + age + sex + grade   | source, data = to_table1)  
+table1::table1(~ service + region + race_ethnic | source, data = to_table1)
+
+table1::table1(~ factor(hsi) + factor(age) + factor(sex) + 
+               factor(race_ethnic) + factor(grade) | factor(source), data = to_table1)
+
+
+
+
+# Alternate Table 1 (Cases and Controls)
+
+
+to_table1 <-
+  cc_exposure_df %>% 
+    dplyr::select(installation_name, case, source, age, sex, race_ethnic, service, grade, hsi) %>% 
+       mutate(service = recode(service,
+            "A" = "Army",
+            "C" = "Coast Guard",
+            "F" = "Air Force",
+            "M" = "Marine Corps",
+            "N" = "Navy"),
+            source = recode(source,
+            "INPATIENT" = "In-Patient",
+            "OUTPATIENT" = "Out-Patient",
+            "RME" = "Reportable Event"),
+            hsi = recode(hsi,
+            "heat_exhaustion" = "Heat Exhaustion",
+            "heat_stroke" = "Heat Stroke"),
+            sex = recode(sex,
+            "F" = "Female",
+            "M" = "Male",
+            "Z" = "Unknown"),
+            case = as_factor(case),
+            case = recode(case,
+                          "0" = "Control",
+                          "1" = "Case")
+                      ) %>% 
+  left_join(climate_regions %>% 
+              mutate(installation_name = janitor::make_clean_names(installation_name)),
+            by = "installation_name") %>% 
+  mutate_if(is.character, as.factor) %>% 
+            mutate(age = fct_relevel(age, ">=40", after = Inf))
+
+
+label(to_table1$hsi) <- "HSI Diagnosis"
+label(to_table1$service) <- "Service Branch"
+label(to_table1$region) <- "NOAA NCEI Climate Region"
+label(to_table1$case) <- "Case Status"
+label(to_table1$source) <- "Encounter Type"
+
+table1::table1(~ hsi + source + service + region | case, data = to_table1)
+
+
+table1::table1(~ hsi + source + region | case, data = to_table1)
+
+
+
+# Cases over time
+
+cc_exposure_df %>% 
+  filter(case == 1) %>% 
+  group_by(lubridate::year(date)) %>% 
+  count() %>% 
+  rename(year = `lubridate::year(date)`) %>% 
+  ggplot(aes(x = year, y= n)) +
+      geom_point() +
+      geom_line(size = 1.5) +
+      theme_bw() +
+  labs(title = "HSI cases by year",
+       x = "year")
+
+
+cc_exposure_df %>% 
+  filter(case == 1) %>% 
+  group_by(lubridate::year(date), installation_name) %>% 
+  count() %>% 
+  rename(year = `lubridate::year(date)`) %>% 
+  ggplot(aes(x = year, y = n, colour = installation_name)) +
+      geom_point() +
+      geom_line(size = 0.8) +
+      theme_bw() +
+  labs(title = "HSI cases by year",
+       x = "year")
+```
+
+## OR Table
+
+```{r}
+
+selected_index <- c("tmp_f_mean", "heat_index_mean","wbgt_mean","tmp_f_max", "heat_index_max", "wbgt_max", "tmp_f0600", "heat_index0600", "wbgt0600", "tmp_f_min", "heat_index_min", "wbgt_min")
+
+
+# read_rds("output/or_table_wbgt_max.rds")
+
+
+or_table_df <-
+  purrr::map_df(.x = selected_index,
+             ~bind_rows(read_rds(paste0("output/or_table_", .x, ".rds")))
+  ) %>%
+  mutate(index_key = index,
+         index = 
+           case_when(
+              index %in% "wbgt_mean" ~ "Mean WBGT (°F)",
+              index %in% "wbgt_max" ~ "Max WBGT (°F)",
+              index %in% "heat_index_mean" ~ "Mean Heat Index (°F)",
+              index %in% "heat_index_max" ~ "Max Heat Index (°F)",
+              index %in% "tmp_f_mean" ~ "Mean Temperature (°F)",
+              index %in% "tmp_f_max" ~ "Max Temperature (°F)"),
+              index %in% "wbgt0600" ~ "0600 hours WBGT (°F)",
+              index %in% "wbgt_min" ~ "Minimum WBGT (°F)",
+              index %in% "heat_index0600" ~ "0600 hours Heat Index (°F)",
+              index %in% "heat_index_min" ~ "Minimum Heat Index (°F)",
+              index %in% "tmp_f0600" ~ "0600 hours Temperature (°F)",
+              index %in% "tmp_f_min" ~ "Minimum Temperature (°F)"),
+          or_ci = paste0(format(round(rr, digits = 2), nsmall = 2, trim = "TRUE"), 
+                         " (", format(round(ci_low, digits = 2), nsmall = 2, trim = "TRUE"), ", ",
+                         format(round(ci_high, digits = 2), nsmall = 2, trim = "TRUE"), ")")
+        ) %>% 
+    rename(or = rr,
+           value = var) 
+  
+
+
+or_table_df
+
+#write.csv(or_table_df, file = "output/or_table_df.csv")
+
+
+or_table_wide <-
+  or_table_df %>% 
+  dplyr::select(-c(index_key, or, ci_low, ci_high)) %>% 
+  #filter(value %in% seq(from = 65, to = 115, by = 5)) %>%
+  pivot_wider(names_from = value, values_from = or_ci) 
+
+
+#write.csv(or_table_wide, file = "output/or_table_wide.csv")
+
+or_table_long <-
+  or_table_df %>%
+    dplyr::select(-c(index_key, or, ci_low, ci_high)) %>% 
+    #filter(value %in% seq(from = 65, to = 115, by = 5)) %>% 
+    pivot_wider(names_from = index, values_from = or_ci)
+
+#write.csv(or_table_long, file = "output/or_table_long.csv")
+
+
+or_df_5_4 <-
+  purrr::map_df(.x = selected_index,
+             ~bind_rows(read_rds(paste0("output/or_table_", .x, ".rds")))
+  ) %>% 
+  mutate(index_key = index,
+         index = 
+           case_when(
+              index %in% "wbgt_mean" ~ "Mean WBGT (°F)",
+              index %in% "wbgt_max" ~ "Max WBGT (°F)",
+              index %in% "heat_index_mean" ~ "Mean Heat Index (°F)",
+              index %in% "heat_index_max" ~ "Max Heat Index (°F)",
+              index %in% "tmp_f_mean" ~ "Mean Temperature (°F)",
+              index %in% "tmp_f_max" ~ "Max Temperature (°F)"),
+          or_ci = paste0(format(round(rr, digits = 2), nsmall = 2, trim = "TRUE"), 
+                         " (", format(round(ci_low, digits = 2), nsmall = 2, trim = "TRUE"), ", ",
+                         format(round(ci_high, digits = 2), nsmall = 2, trim = "TRUE"), ")")
+        ) %>% 
+    rename(or = rr,
+           value = var) 
+  
+
+
+or_df_5_4 
+
+
+
+```
+
+
+```{r}
+
+# OR table (wide)
+or_df_5_4 %>% 
+  dplyr::select(-c(index_key, or, ci_low, ci_high)) %>% 
+  filter(value %in% seq(from = 65, to = 115, by = 5)) %>%
+  pivot_wider(names_from = value, values_from = or_ci) %>% 
+  knitr::kable()
+
+# OR table ("long"- transposed)
+
+or_df_5_4 %>% 
+  dplyr::select(-c(index_key, or, ci_low, ci_high)) %>% 
+  #filter(value %in% seq(from = 65, to = 115, by = 5)) %>% 
+  pivot_wider(names_from = index, values_from = or_ci) %>% 
+  knitr::kable()
+
+or_df_5_4_long <-
+  or_df_5_4 %>% 
+    dplyr::select(-c(index_key, or, ci_low, ci_high)) %>% 
+    #filter(value %in% seq(from = 65, to = 115, by = 5)) %>% 
+    pivot_wider(names_from = index, values_from = or_ci)
+
+
+or_df_5_4_long %>% View()
+
+#write.csv(or_df_5_4_long, file = "output/or_df_5_4_long.csv")
+```
+
+
+## Mean monthly temperatures
+```{r}
+
+# Mean monthly temperatures, deg F
+daily_indices %>% 
+  dplyr::filter(lubridate::year(date) %in% 1998:2019) %>%
+  group_by(site_name, lubridate::month(date)) %>% 
+  summarise(mean = mean(tmp_f_mean)) %>% 
+  pivot_wider(names_from = site_name, values_from = mean)
+
+# Mean of max daily temperatures
+daily_indices %>% 
+  dplyr::filter(lubridate::year(date) %in% 1998:2019) %>%
+  group_by(site_name, lubridate::month(date)) %>% 
+  summarise(max = mean(tmp_f_max)) %>% 
+  pivot_wider(names_from = site_name, values_from = max)
+
+```
+
+
+### Counts by service - installation
+```{r}
+
+base_service_counts <-
+  cc_exposure_df %>% 
+    count(site_name, service) %>% 
+    spread(service, n, fill = 0) 
+
+```
+
+

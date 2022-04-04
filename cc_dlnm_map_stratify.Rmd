@@ -1,0 +1,435 @@
+---
+title: "cc_dlnm_map_stratify"
+output: 
+  html_document:
+   keep_md: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(plotly)
+library(lattice)
+library(dlnm)
+library(survival)
+library(splines)
+library(broom)
+library(weathermetrics)
+library(viridis)
+library(reshape2)
+library(magick)
+library(ggrepel)
+
+```
+
+Case-crossover models (DLNM) mapped over set of index variables. 
+
+
+## Input data
+
+```{r}
+
+## cc-exposure df from `case_control_exposures.Rmd`
+
+cc_exposure_df <-
+  read_rds(file = "data/cc_exposure_df_rod.rds") %>% 
+    filter(year %in% 1998:2019) 
+
+daily_indices <-
+  read_rds(file = "data/daily_indices_rod") 
+
+
+```
+
+
+
+## Inputs
+
+```{r}
+
+
+selected_index <- c("tmp_f_mean", "tmp_f_max", "tmp_f_min", "tmp_f_0600", "hi_f_mean", "hi_f_max", "hi_f_min", "hi_f_0600",
+                    "wbgt_f_mean", "wbgt_f_max", "wbgt_f_min", "wbgt_f_0600")
+
+# crossbasis options
+set_lag <- 5    # total number days lag to assess
+set_dr_df <- 5   # natural spline degrees of freedom for functional form of the dose-response curve
+set_lag_df <- 4   # natural spline degrees of freedom for functional form of the lag
+
+# crosspred options
+
+set_increment <- 1   # crosspred "by = "
+set_centered <- median(eval(parse(text = paste0("cc_exposure_df$", selected_index))))       # crosspred "cen= ", centered value for odds ratios 
+set_min_temp <- 32   # crosspred lower bound
+
+
+
+## Lag function
+
+
+# DLNM
+## Lags function
+
+lags <- seq(set_lag) # Number of lags
+
+lag_names <- paste("lag", formatC(lags, width = nchar(max(lags)), flag = "0"), 
+  sep = "_")
+
+lag_fun <- setNames(paste("dplyr::lag(., ", lags, ")"), lag_names)
+
+```
+
+
+
+## Stratify function 
+By region, hsi_type, service
+
+
+```{r, warning = FALSE}
+
+
+cc_dlnm_fun_stratify <-  function(selected_index) {
+
+lag_matrix <-
+  daily_indices %>%
+    filter(date %in% as.Date("1997-12-15"):as.Date("2019-12-31")) %>%
+      dplyr::select(site_name, date, selected_index) %>%
+   group_by(site_name) %>%
+   mutate_at(vars(selected_index), funs_(lag_fun)
+  )
+
+
+# join lag matrix to case-crossover dataframe
+
+cc_lag_matrix <-
+ cc_exposure_df %>%
+  dplyr::select(!selected_index) %>%    # remove to avoid double listing after join
+ left_join(lag_matrix,  by = c("site_name", "date"))
+
+
+cc_lag_only <- 
+  cc_lag_matrix %>% 
+  dplyr::select(selected_index, lag_1:paste0("lag_", set_lag))
+
+
+# Define dlnm cross-basis (penalized splines)
+
+index_cb <-
+    crossbasis(
+      cc_lag_only,    
+      lag = set_lag,    # of lags
+      argvar = list(fun = "ns", df = set_dr_df),    #  functional form of the dose-response curve
+      arglag = list(fun = "ns", df = set_lag_df))    #  functional form of the lags
+
+# run model and get prediction for selected_index
+
+index_dlnm <- survival::clogit(case ~
+             index_cb +  # lagged, nonlinear term for exposure
+             strata(stratum),
+             method = "efron",
+              data =  cc_exposure_df)
+
+
+# centered value from index median
+
+set_centered <- median(eval(parse(text = paste0("cc_exposure_df$", selected_index))))  
+
+# max_temp based on selected index
+
+# crosspred upper-bound
+set_max_temp <- case_when(
+  selected_index %in% "wbgt_f_mean" ~ 90,
+  selected_index %in% "wbgt_f_max" ~ 110,
+  selected_index %in% "hi_f_mean" ~ 110,
+  selected_index %in% "hi_f_max" ~ 120,
+  selected_index %in% "tmp_f_mean" ~ 105,
+  selected_index %in% "tmp_f_max" ~ 120,
+  selected_index %in% "tmp_f_min" ~ 90,
+  selected_index %in% "hi_f_min" ~ 100,
+  selected_index %in% "wbgt_f_min" ~ 84,
+  selected_index %in% "tmp_f_0600" ~ 92,
+  selected_index %in% "hi_f_0600" ~ 100 ,
+  selected_index %in% "wbgt_f_0600" ~ 86 
+        )
+
+
+# set max plot index value (approximate, or rounded-down from max value in dataset)
+set_max_plot_value <- case_when(
+  selected_index %in% "wbgt_f_mean" ~ 86,
+  selected_index %in% "wbgt_f_max" ~ 104,
+  selected_index %in% "hi_f_mean" ~ 104,
+  selected_index %in% "hi_f_max" ~ 116,
+  selected_index %in% "tmp_f_mean" ~ 98,
+  selected_index %in% "tmp_f_max" ~ 112,
+  selected_index %in% "tmp_f_min" ~ 88,
+  selected_index %in% "hi_f_min" ~ 99,
+  selected_index %in% "wbgt_f_min" ~ 82,
+  selected_index %in% "tmp_f_0600" ~ 90,
+  selected_index %in% "hi_f_0600" ~ 98,
+  selected_index %in% "wbgt_f_0600" ~ 85
+        )
+    
+print_index <- case_when(
+  selected_index %in% "wbgt_f_mean" ~ "Mean WBGT (°F)",
+  selected_index %in% "wbgt_f_max" ~ "Maximum WBGT (°F)",
+  selected_index %in% "hi_f_mean" ~ "Mean Heat Index (°F)",
+  selected_index %in% "hi_f_max" ~ "Maximum Heat Index (°F)",
+  selected_index %in% "tmp_f_mean" ~ "Mean Temperature (°F)",
+  selected_index %in% "tmp_f_max" ~ "Maximum Temperature (°F)",
+  selected_index %in% "wbgt_f_min" ~ "Minimum WBGT (°F)",
+  selected_index %in% "wbgt_f_0600" ~ "WBGT 0600 Local (°F)",
+  selected_index %in% "hi_f_min" ~ "Minimum Heat Index (°F)",
+  selected_index %in% "hi_f_0600" ~ "Heat Index 0600 Local (°F)",
+  selected_index %in% "tmp_f_min" ~ "Minimum Temperature (°F)",
+  selected_index %in% "tmp_f_0600" ~ "Temperature 0600 Local (°F)"
+    )
+
+print_index_c <- case_when(
+  selected_index %in% "wbgt_f_mean" ~ "Mean WBGT (°C)",
+  selected_index %in% "wbgt_f_max" ~ "Maximum WBGT (°C)",
+  selected_index %in% "hi_f_mean" ~ "Mean Heat Index (°C)",
+  selected_index %in% "hi_f_max" ~ "Maximum Heat Index (°C)",
+  selected_index %in% "tmp_f_mean" ~ "Mean Temperature (°C)",
+  selected_index %in% "tmp_f_max" ~ "Maximum Temperature (°C)",
+  selected_index %in% "wbgt_f_min" ~ "Minimum WBGT (°C)",
+  selected_index %in% "wbgt_f_0600" ~ "WBGT 0600 Local (°C)",
+  selected_index %in% "hi_f_min" ~ "Minimum Heat Index (°C)",
+  selected_index %in% "hi_f_0600" ~ "Heat Index 0600 Local (°C)",
+  selected_index %in% "tmp_f_min" ~ "Minimum Temperature (°C)",
+  selected_index %in% "tmp_f_0600" ~ "Temperature 0600 Local (°C)"
+    )
+
+
+## Nest by Region
+
+assign(paste0(selected_index, "_nest_region"),
+  cc_exposure_df %>%
+    filter(year %in% 1998:2019) %>%
+    dplyr::select(!selected_index) %>%    # remove to avoid double listing after join
+    left_join(lag_matrix,  by = c("site_name", "date")) %>% 
+    group_by(region) %>% 
+    nest() %>% 
+    rename(cc_lag_matrix = data) %>% 
+    mutate(cc_lag_only =
+             map(cc_lag_matrix, ~ .x %>% dplyr::select(selected_index, lag_1:paste0("lag_", set_lag))),
+           index_cb = 
+             map(cc_lag_only, ~ crossbasis(
+                .x,    
+                lag = set_lag,    # of lags
+                argvar = list(fun = "ns", df = set_dr_df),    #  functional form of the dose-response curve
+                arglag = list(fun = "ns", df = set_lag_df))                
+              ),
+           index_dlnm = 
+             map2(.x = index_cb, .y = cc_lag_matrix,  ~ survival::clogit(case ~ 
+                    .x +  # lagged, nonlinear term for exposure
+                    strata(stratum), 
+                    method = "efron",
+                    data =  .y)),
+            pred_dlnm = 
+              map2(.x = index_cb, .y = index_dlnm, ~ crosspred(
+                .x, .y, by = set_increment, from = set_min_temp, to = set_max_temp, cen = set_centered, cumul = TRUE)))
+)  
+
+eval(parse(text = paste0(selected_index, "_nest_region"))) 
+
+
+# Plot cumulative lag
+
+to_plot_region <-
+  eval(parse(text = paste0(selected_index, "_nest_region"))) %>% 
+    mutate(to_plot = 
+             map(.x = pred_dlnm, ~ 
+                   data.frame(index = .x$predvar, 
+                      mean = .x$allRRfit,
+                      lower = .x$allRRlow,
+                      upper = .x$allRRhigh))) %>% 
+    dplyr::select(region, to_plot) %>% 
+      unnest(to_plot) %>% 
+  filter(index <= set_max_plot_value)
+
+
+assign(paste0("plot_", selected_index, "_region"),
+  ggplot(data = to_plot_region, aes(x = index, y = mean, ymin = lower, ymax = upper, color = region, fill = region)) +     
+    geom_hline(lty = 2, yintercept = 1) + # horizontal reference line at no change in odds
+    geom_ribbon(alpha = 0.1, colour = NA) +
+    geom_line(size = 1.2) +
+    xlab(print_index) +
+    ylab('Odds Ratio') +
+    labs(caption = paste0("Centered at ", format(round(set_centered, digits = 1), nsmall = 1), " °F")) +
+    coord_cartesian(xlim = c(NA, set_max_plot_value)) +
+    theme(legend.position = "bottom") +
+    scale_x_continuous(print_index, sec.axis = sec_axis(trans = ~ (5/9) * (. - 32), name = print_index_c, breaks = seq(from = -20, to = 60, by = 5))) + 
+        theme_bw()
+)
+
+# write_rds(eval(parse(text = paste0("plot_", selected_index, "_region"))), 
+#   file = paste0("output/stratify/region/", paste0("plot_", selected_index, "_region"), ".rds"))
+
+paste0("plot_", selected_index, "_region")
+
+eval(parse(text = paste0("plot_", selected_index, "_region")))
+
+ggsave(file = paste0("output/stratify/region/", paste0("plot_", selected_index, "_region"), ".tiff"))
+
+
+
+## Branch of service (site)
+
+assign(paste0(selected_index, "_nest_service"),
+  cc_exposure_df %>%
+    filter(year %in% 1998:2019) %>%
+    dplyr::select(!selected_index) %>%    # remove to avoid double listing after join
+    left_join(lag_matrix,  by = c("site_name", "date")) %>%
+    group_by(base_service) %>%
+    nest() %>%
+    rename(cc_lag_matrix = data) %>%
+    mutate(cc_lag_only =
+             map(cc_lag_matrix, ~ .x %>% dplyr::select(selected_index, lag_1:paste0("lag_", set_lag))),
+           index_cb =
+             map(cc_lag_only, ~ crossbasis(
+                .x,
+                lag = set_lag,    # of lags
+                argvar = list(fun = "ns", df = set_dr_df),    #  functional form of the dose-response curve
+                arglag = list(fun = "ns", df = set_lag_df))
+              ),
+           index_dlnm =
+             map2(.x = index_cb, .y = cc_lag_matrix,  ~ survival::clogit(case ~
+                    .x +  # lagged, nonlinear term for exposure
+                    strata(stratum),
+                    method = "efron",
+                    data =  .y)),
+            pred_dlnm =
+              map2(.x = index_cb, .y = index_dlnm, ~ crosspred(
+                .x, .y, by = set_increment, from = set_min_temp, to = set_max_temp, cen = set_centered, cumul = TRUE)))
+)
+
+eval(parse(text = paste0(selected_index, "_nest_service")))
+
+# Plot cumulative lag
+
+to_plot_service <-
+  eval(parse(text = paste0(selected_index, "_nest_service"))) %>%
+    mutate(to_plot =
+             map(.x = pred_dlnm, ~
+                   data.frame(index = .x$predvar,
+                      mean = .x$allRRfit,
+                      lower = .x$allRRlow,
+                      upper = .x$allRRhigh))) %>%
+    dplyr::select(base_service, to_plot) %>%
+      unnest(to_plot) %>%
+  filter(index <= set_max_plot_value)
+
+
+assign(paste0("plot_", selected_index, "_service"),
+  ggplot(data = to_plot_service, aes(x = index, y = mean, ymin = lower, ymax = upper, color = base_service, fill = base_service)) +
+    geom_hline(lty = 2, yintercept = 1) + # horizontal reference line at no change in odds
+    geom_ribbon(alpha = 0.1, colour = NA) +
+    geom_line(size = 1.25) +
+    xlab(print_index) +
+    ylab('Odds Ratio') +
+    labs(caption = paste0("Centered at ", format(round(set_centered, digits = 1), nsmall = 1), " °F")) +
+    coord_cartesian(xlim = c(NA, set_max_plot_value)) +
+    theme(legend.position = "bottom") +
+    scale_x_continuous(print_index, sec.axis = sec_axis(trans = ~ (5/9) * (. - 32), name = print_index_c, breaks = seq(from = -20, to = 60, by = 5))) +
+        theme_bw()
+)
+
+# write_rds(eval(parse(text = paste0("plot_", selected_index, "_service"))),
+#   file = paste0("output/stratify/service/", paste0("plot_", selected_index, "_service"), ".rds"))
+
+eval(parse(text = paste0("plot_", selected_index, "_service")))
+
+ggsave(file = paste0("output/stratify/service/", paste0("plot_", selected_index, "_service"), ".tiff"))
+
+
+## HSI type
+
+assign(paste0(selected_index, "_nest_hsi"),
+  cc_exposure_df %>%
+    filter(year %in% 1998:2019) %>%
+    mutate(hsi = recode(hsi, heat_stroke = "heat stroke",
+                             heat_exhaustion = "heat exhaustion"),
+           hsi = as_factor(hsi),
+           hsi = fct_relevel(hsi, c("heat stroke", "heat exhaustion"))) %>%
+    dplyr::select(!selected_index) %>%    # remove to avoid double listing after join
+    left_join(lag_matrix,  by = c("site_name", "date")) %>%
+    group_by(hsi) %>%
+    nest() %>%
+    rename(cc_lag_matrix = data) %>%
+    mutate(cc_lag_only =
+             map(cc_lag_matrix, ~ .x %>% dplyr::select(selected_index, lag_1:paste0("lag_", set_lag))),
+           index_cb =
+             map(cc_lag_only, ~ crossbasis(
+                .x,
+                lag = set_lag,    # of lags
+                argvar = list(fun = "ns", df = set_dr_df),    #  functional form of the dose-response curve
+                arglag = list(fun = "ns", df = set_lag_df))
+              ),
+           index_dlnm =
+             map2(.x = index_cb, .y = cc_lag_matrix,  ~ survival::clogit(case ~
+                    .x +  # lagged, nonlinear term for exposure
+                    strata(stratum),
+                    method = "efron",
+                    data =  .y)),
+            pred_dlnm =
+              map2(.x = index_cb, .y = index_dlnm, ~ crosspred(
+                .x, .y, by = set_increment, from = set_min_temp, to = set_max_temp, cen = set_centered, cumul = TRUE)))
+)
+
+eval(parse(text = paste0(selected_index, "_nest_hsi")))
+
+
+
+# Plot cumulative lag
+
+to_plot_hsi<-
+  eval(parse(text = paste0(selected_index, "_nest_hsi"))) %>%
+    mutate(to_plot =
+             map(.x = pred_dlnm, ~
+                   data.frame(index = .x$predvar,
+                      mean = .x$allRRfit,
+                      lower = .x$allRRlow,
+                      upper = .x$allRRhigh))) %>%
+    dplyr::select(hsi, to_plot) %>%
+      unnest(to_plot) %>%
+  filter(index <= set_max_plot_value)
+
+
+assign(paste0("plot_", selected_index, "_hsi"),
+  ggplot(data = to_plot_hsi, aes(x = index, y = mean, ymin = lower, ymax = upper, color = hsi, fill = hsi)) +
+    geom_hline(lty = 2, yintercept = 1) + # horizontal reference line at no change in odds
+    geom_ribbon(alpha = 0.1, colour = NA) +
+    geom_line(size = 1.25) +
+    xlab(print_index) +
+    ylab('Odds Ratio') +
+    coord_cartesian(xlim = c(NA, set_max_plot_value)) +
+    theme(legend.position = "bottom") +
+    scale_x_continuous(print_index, sec.axis = sec_axis(trans = ~ (5/9) * (. - 32), name = print_index_c, breaks = seq(from = -20, to = 60, by = 5))) +
+    theme_bw()
+)
+
+# write_rds(eval(parse(text = paste0("plot_", selected_index, "_hsi"))),
+#   file = paste0("output/stratify/hsi_type/", paste0("plot_", selected_index, "_hsi"), ".rds"))
+
+
+eval(parse(text = paste0("plot_", selected_index, "_hsi")))
+
+ggsave(file = paste0("output/stratify/hsi_type/", paste0("plot_", selected_index, "_hsi_type"), ".tiff"))
+
+}
+
+```
+
+
+
+## Map function
+```{r}
+
+purrr::map(selected_index, cc_dlnm_fun_stratify) 
+
+```
+
+

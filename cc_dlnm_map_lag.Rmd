@@ -67,7 +67,7 @@ set_lag_df <- 4   # natural spline degrees of freedom for functional form of the
 # crosspred options
 
 set_increment <- 1   # crosspred "by = "
-# set_centered <- median(eval(parse(text = paste0("cc_exposure_df$", selected_index))))       #60     # crosspred "cen= ", centered value for odds ratios 
+set_centered <- median(eval(parse(text = paste0("cc_exposure_df$", selected_index))))    # crosspred "cen= ", centered value for odds ratios 
 set_min_temp <- 32   # crosspred lower bound
 
 
