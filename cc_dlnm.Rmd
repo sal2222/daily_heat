@@ -87,9 +87,6 @@ set_max_temp <- case_when(
 set_max_temp
 
 
-#cc_exposure_df_minimums %>% summary()
-   
-
 
 # set max plot index value (approximate, or rounded-down from max value in dataset)
 set_max_plot_value <- case_when(
@@ -113,11 +110,11 @@ set_max_plot_value
 
 print_index <- case_when(
   selected_index %in% "wbgt_f_mean" ~ "Mean WBGT (°F)",
-  selected_index %in% "wbgt_f_max" ~ "Max WBGT (°F)",
+  selected_index %in% "wbgt_f_max" ~ "Maximum WBGT (°F)",
   selected_index %in% "hi_f_mean" ~ "Mean Heat Index (°F)",
-  selected_index %in% "hi_f_max" ~ "Max Heat Index (°F)",
+  selected_index %in% "hi_f_max" ~ "Maximum Heat Index (°F)",
   selected_index %in% "tmp_f_mean" ~ "Mean Temperature (°F)",
-  selected_index %in% "tmp_f_max" ~ "Max Temperature (°F)",
+  selected_index %in% "tmp_f_max" ~ "Maximum Temperature (°F)",
   selected_index %in% "wbgt_f_min" ~ "Minimum WBGT (°F)",
   selected_index %in% "wbgt_f_0600" ~ "WBGT 0600 Local (°F)",
   selected_index %in% "hi_f_min" ~ "Minimum Heat Index (°F)",
@@ -129,6 +126,24 @@ print_index <- case_when(
 
 print_index
 
+
+print_index_c <- case_when(
+  selected_index %in% "wbgt_f_mean" ~ "Mean WBGT (°C)",
+  selected_index %in% "wbgt_f_max" ~ "Maximum WBGT (°C)",
+  selected_index %in% "hi_f_mean" ~ "Mean Heat Index (°C)",
+  selected_index %in% "hi_f_max" ~ "Maximum Heat Index (°C)",
+  selected_index %in% "tmp_f_mean" ~ "Mean Temperature (°C)",
+  selected_index %in% "tmp_f_max" ~ "Maximum Temperature (°C)",
+  selected_index %in% "wbgt_f_min" ~ "Minimum WBGT (°C)",
+  selected_index %in% "wbgt_f_0600" ~ "WBGT 0600 Local (°C)",
+  selected_index %in% "hi_f_min" ~ "Minimum Heat Index (°C)",
+  selected_index %in% "hi_f_0600" ~ "Heat Index 0600 Local (°C)",
+  selected_index %in% "tmp_f_min" ~ "Minimum Temperature (°C)",
+  selected_index %in% "tmp_f_0600" ~ "Temperature 0600 Local (°C)"
+    )
+
+
+print_index_c
 
 
 ```
@@ -324,10 +339,6 @@ to_plot_slice <-
       dplyr::select(OR_high)
 ) %>% 
    mutate(index_value = as.numeric(index_value))
-
-
-
-
 
 
 
