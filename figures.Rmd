@@ -70,6 +70,14 @@ to_density_plot_all <-
     ) 
   
 
+
+
+## Inspect percentages of cases above/below index value
+to_density_plot_all %>% 
+  filter(Index %in% "hi_f_max",  #32,426
+         Value > 103) #4706
+
+
 ```
 
 

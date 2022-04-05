@@ -172,119 +172,62 @@ cc_exposure_df %>%
 
 ```{r}
 
-selected_index <- c("tmp_f_mean", "heat_index_mean","wbgt_mean","tmp_f_max", "heat_index_max", "wbgt_max", "tmp_f0600", "heat_index0600", "wbgt0600", "tmp_f_min", "heat_index_min", "wbgt_min")
+# Main
+selected_index <- c("tmp_f_mean", "tmp_f_max", "hi_f_mean", "hi_f_max", "wbgt_f_mean", "wbgt_f_max")
 
+# All
+selected_index <- c("tmp_f_mean", "tmp_f_max", "tmp_f_min", "tmp_f_0600", "hi_f_mean", "hi_f_max", "hi_f_min", "hi_f_0600",
+                    "wbgt_f_mean", "wbgt_f_max", "wbgt_f_min", "wbgt_f_0600")
 
 # read_rds("output/or_table_wbgt_max.rds")
 
 
-or_table_df <-
+or_table_df_rod <-
   purrr::map_df(.x = selected_index,
-             ~bind_rows(read_rds(paste0("output/or_table_", .x, ".rds")))
+             ~bind_rows(read_rds(paste0("output/or_tables/or_table_", .x, ".rds")))
   ) %>%
   mutate(index_key = index,
          index = 
            case_when(
-              index %in% "wbgt_mean" ~ "Mean WBGT (°F)",
-              index %in% "wbgt_max" ~ "Max WBGT (°F)",
-              index %in% "heat_index_mean" ~ "Mean Heat Index (°F)",
-              index %in% "heat_index_max" ~ "Max Heat Index (°F)",
+              index %in% "wbgt_f_mean" ~ "Mean WBGT (°F)",
+              index %in% "wbgt_f_max" ~ "Max WBGT (°F)",
+              index %in% "hi_f_mean" ~ "Mean Heat Index (°F)",
+              index %in% "hi_f_max" ~ "Max Heat Index (°F)",
               index %in% "tmp_f_mean" ~ "Mean Temperature (°F)",
-              index %in% "tmp_f_max" ~ "Max Temperature (°F)"),
-              index %in% "wbgt0600" ~ "0600 hours WBGT (°F)",
-              index %in% "wbgt_min" ~ "Minimum WBGT (°F)",
-              index %in% "heat_index0600" ~ "0600 hours Heat Index (°F)",
-              index %in% "heat_index_min" ~ "Minimum Heat Index (°F)",
-              index %in% "tmp_f0600" ~ "0600 hours Temperature (°F)",
+              index %in% "tmp_f_max" ~ "Max Temperature (°F)",
+              index %in% "wbgt_f_0600" ~ "0600 hours WBGT (°F)",
+              index %in% "wbgt_f_min" ~ "Minimum WBGT (°F)",
+              index %in% "hi_f_0600" ~ "0600 hours Heat Index (°F)",
+              index %in% "hi_f_min" ~ "Minimum Heat Index (°F)",
+              index %in% "tmp_f_0600" ~ "0600 hours Temperature (°F)",
               index %in% "tmp_f_min" ~ "Minimum Temperature (°F)"),
           or_ci = paste0(format(round(rr, digits = 2), nsmall = 2, trim = "TRUE"), 
                          " (", format(round(ci_low, digits = 2), nsmall = 2, trim = "TRUE"), ", ",
-                         format(round(ci_high, digits = 2), nsmall = 2, trim = "TRUE"), ")")
-        ) %>% 
+                         format(round(ci_high, digits = 2), nsmall = 2, trim = "TRUE"), ")")) %>% 
     rename(or = rr,
            value = var) 
   
+or_table_df_rod
 
 
-or_table_df
-
-#write.csv(or_table_df, file = "output/or_table_df.csv")
-
-
-or_table_wide <-
-  or_table_df %>% 
+or_table_rod_wide <-
+  or_table_df_rod %>% 
   dplyr::select(-c(index_key, or, ci_low, ci_high)) %>% 
-  #filter(value %in% seq(from = 65, to = 115, by = 5)) %>%
   pivot_wider(names_from = value, values_from = or_ci) 
 
+or_table_rod_wide
 
-#write.csv(or_table_wide, file = "output/or_table_wide.csv")
 
-or_table_long <-
-  or_table_df %>%
+or_table_rod <-
+  or_table_df_rod  %>%
     dplyr::select(-c(index_key, or, ci_low, ci_high)) %>% 
-    #filter(value %in% seq(from = 65, to = 115, by = 5)) %>% 
     pivot_wider(names_from = index, values_from = or_ci)
 
-#write.csv(or_table_long, file = "output/or_table_long.csv")
+or_table_rod
+
+#write.csv(or_table_rod, file = "output/tables/or_table_rod.csv")
 
 
-or_df_5_4 <-
-  purrr::map_df(.x = selected_index,
-             ~bind_rows(read_rds(paste0("output/or_table_", .x, ".rds")))
-  ) %>% 
-  mutate(index_key = index,
-         index = 
-           case_when(
-              index %in% "wbgt_mean" ~ "Mean WBGT (°F)",
-              index %in% "wbgt_max" ~ "Max WBGT (°F)",
-              index %in% "heat_index_mean" ~ "Mean Heat Index (°F)",
-              index %in% "heat_index_max" ~ "Max Heat Index (°F)",
-              index %in% "tmp_f_mean" ~ "Mean Temperature (°F)",
-              index %in% "tmp_f_max" ~ "Max Temperature (°F)"),
-          or_ci = paste0(format(round(rr, digits = 2), nsmall = 2, trim = "TRUE"), 
-                         " (", format(round(ci_low, digits = 2), nsmall = 2, trim = "TRUE"), ", ",
-                         format(round(ci_high, digits = 2), nsmall = 2, trim = "TRUE"), ")")
-        ) %>% 
-    rename(or = rr,
-           value = var) 
-  
-
-
-or_df_5_4 
-
-
-
-```
-
-
-```{r}
-
-# OR table (wide)
-or_df_5_4 %>% 
-  dplyr::select(-c(index_key, or, ci_low, ci_high)) %>% 
-  filter(value %in% seq(from = 65, to = 115, by = 5)) %>%
-  pivot_wider(names_from = value, values_from = or_ci) %>% 
-  knitr::kable()
-
-# OR table ("long"- transposed)
-
-or_df_5_4 %>% 
-  dplyr::select(-c(index_key, or, ci_low, ci_high)) %>% 
-  #filter(value %in% seq(from = 65, to = 115, by = 5)) %>% 
-  pivot_wider(names_from = index, values_from = or_ci) %>% 
-  knitr::kable()
-
-or_df_5_4_long <-
-  or_df_5_4 %>% 
-    dplyr::select(-c(index_key, or, ci_low, ci_high)) %>% 
-    #filter(value %in% seq(from = 65, to = 115, by = 5)) %>% 
-    pivot_wider(names_from = index, values_from = or_ci)
-
-
-or_df_5_4_long %>% View()
-
-#write.csv(or_df_5_4_long, file = "output/or_df_5_4_long.csv")
 ```
 
 
