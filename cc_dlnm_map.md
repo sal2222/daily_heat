@@ -7,33 +7,15 @@ editor_options:
   chunk_output_type: console
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
 
-library(tidyverse)
-library(plotly)
-library(lattice)
-library(dlnm)
-library(survival)
-library(splines)
-library(broom)
-library(weathermetrics)
-library(viridis)
-library(reshape2)
-library(magick)
-library(ggrepel)
-
-citation("dlnm")
-citation("survival")
-```
 
 Case-crossover models (DLNM) mapped over set of index variables. 
 
 
 ## Input data
 
-```{r}
 
+```r
 ## cc-exposure df from `case_control_exposures.Rmd`
 
 cc_exposure_df <-
@@ -42,17 +24,14 @@ cc_exposure_df <-
 
 daily_indices <-
   read_rds(file = "data/daily_indices_rod") 
-
-
 ```
 
 
 
 ## Inputs
 
-```{r}
 
-
+```r
 selected_index <- c("tmp_f_mean", "tmp_f_max", "tmp_f_min", "tmp_f_0600", "hi_f_mean", "hi_f_max", "hi_f_min", "hi_f_0600",
                     "wbgt_f_mean", "wbgt_f_max", "wbgt_f_min", "wbgt_f_0600")
 
@@ -81,14 +60,14 @@ lag_names <- paste("lag", formatC(lags, width = nchar(max(lags)), flag = "0"),
   sep = "_")
 
 lag_fun <- setNames(paste("dplyr::lag(., ", lags, ")"), lag_names)
-
 ```
 
 
 
 ## Create lag matrix for selected index; join to case-crossover dataframe
 
-```{r, warning = FALSE}
+
+```r
  # create lag matrix
 
 
@@ -267,15 +246,307 @@ eval(parse(text = paste0("plot_", selected_index)))
 #ggsave(file = paste0("output/", paste0("plot_", selected_index), ".tiff"))
 
 }
-
 ```
 
 
 ## Map function
-```{r}
 
+```r
 purrr::map(selected_index, cc_dlnm_fun) 
+```
 
 ```
+## Note: Using an external vector in selections is ambiguous.
+## i Use `all_of(selected_index)` instead of `selected_index` to silence this message.
+## i See <https://tidyselect.r-lib.org/reference/faq-external-vector.html>.
+## This message is displayed once per session.
+```
+
+```
+## Warning: `funs_()` was deprecated in dplyr 0.7.0.
+## Please use `funs()` instead.
+## See vignette('programming') for more help
+## This warning is displayed once every 8 hours.
+## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was generated.
+```
+
+```
+## Warning: `funs()` was deprecated in dplyr 0.8.0.
+## Please use a list of either functions or lambdas: 
+## 
+##   # Simple named list: 
+##   list(mean = mean, median = median)
+## 
+##   # Auto named with `tibble::lst()`: 
+##   tibble::lst(mean, median)
+## 
+##   # Using lambdas
+##   list(~ mean(., trim = .2), ~ median(., na.rm = TRUE))
+## This warning is displayed once every 8 hours.
+## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was generated.
+```
+
+```
+## Warning in (function (fun = NULL, df = NULL, knots = NULL, ...) : default knots placement along lags has changed since version 2.0.0.
+## See 'file.show(system.file('Changesince200',package='dlnm'))'.
+## See also help(logknots) for setting the knots
+## consistently with the previous versions
+```
+
+```
+## New names:
+## * `` -> `...1`
+## * `` -> `...2`
+## * `` -> `...3`
+## * `` -> `...4`
+```
+
+```
+## Warning in (function (fun = NULL, df = NULL, knots = NULL, ...) : default knots placement along lags has changed since version 2.0.0.
+## See 'file.show(system.file('Changesince200',package='dlnm'))'.
+## See also help(logknots) for setting the knots
+## consistently with the previous versions
+```
+
+```
+## New names:
+## * `` -> `...1`
+## * `` -> `...2`
+## * `` -> `...3`
+## * `` -> `...4`
+```
+
+```
+## Warning in (function (fun = NULL, df = NULL, knots = NULL, ...) : default knots placement along lags has changed since version 2.0.0.
+## See 'file.show(system.file('Changesince200',package='dlnm'))'.
+## See also help(logknots) for setting the knots
+## consistently with the previous versions
+```
+
+```
+## New names:
+## * `` -> `...1`
+## * `` -> `...2`
+## * `` -> `...3`
+## * `` -> `...4`
+```
+
+```
+## Warning in (function (fun = NULL, df = NULL, knots = NULL, ...) : default knots placement along lags has changed since version 2.0.0.
+## See 'file.show(system.file('Changesince200',package='dlnm'))'.
+## See also help(logknots) for setting the knots
+## consistently with the previous versions
+```
+
+```
+## New names:
+## * `` -> `...1`
+## * `` -> `...2`
+## * `` -> `...3`
+## * `` -> `...4`
+```
+
+```
+## Warning in (function (fun = NULL, df = NULL, knots = NULL, ...) : default knots placement along lags has changed since version 2.0.0.
+## See 'file.show(system.file('Changesince200',package='dlnm'))'.
+## See also help(logknots) for setting the knots
+## consistently with the previous versions
+```
+
+```
+## New names:
+## * `` -> `...1`
+## * `` -> `...2`
+## * `` -> `...3`
+## * `` -> `...4`
+```
+
+```
+## Warning in (function (fun = NULL, df = NULL, knots = NULL, ...) : default knots placement along lags has changed since version 2.0.0.
+## See 'file.show(system.file('Changesince200',package='dlnm'))'.
+## See also help(logknots) for setting the knots
+## consistently with the previous versions
+```
+
+```
+## New names:
+## * `` -> `...1`
+## * `` -> `...2`
+## * `` -> `...3`
+## * `` -> `...4`
+```
+
+```
+## Warning in (function (fun = NULL, df = NULL, knots = NULL, ...) : default knots placement along lags has changed since version 2.0.0.
+## See 'file.show(system.file('Changesince200',package='dlnm'))'.
+## See also help(logknots) for setting the knots
+## consistently with the previous versions
+```
+
+```
+## New names:
+## * `` -> `...1`
+## * `` -> `...2`
+## * `` -> `...3`
+## * `` -> `...4`
+```
+
+```
+## Warning in (function (fun = NULL, df = NULL, knots = NULL, ...) : default knots placement along lags has changed since version 2.0.0.
+## See 'file.show(system.file('Changesince200',package='dlnm'))'.
+## See also help(logknots) for setting the knots
+## consistently with the previous versions
+```
+
+```
+## New names:
+## * `` -> `...1`
+## * `` -> `...2`
+## * `` -> `...3`
+## * `` -> `...4`
+```
+
+```
+## Warning in (function (fun = NULL, df = NULL, knots = NULL, ...) : default knots placement along lags has changed since version 2.0.0.
+## See 'file.show(system.file('Changesince200',package='dlnm'))'.
+## See also help(logknots) for setting the knots
+## consistently with the previous versions
+```
+
+```
+## New names:
+## * `` -> `...1`
+## * `` -> `...2`
+## * `` -> `...3`
+## * `` -> `...4`
+```
+
+```
+## Warning in (function (fun = NULL, df = NULL, knots = NULL, ...) : default knots placement along lags has changed since version 2.0.0.
+## See 'file.show(system.file('Changesince200',package='dlnm'))'.
+## See also help(logknots) for setting the knots
+## consistently with the previous versions
+```
+
+```
+## New names:
+## * `` -> `...1`
+## * `` -> `...2`
+## * `` -> `...3`
+## * `` -> `...4`
+```
+
+```
+## Warning in (function (fun = NULL, df = NULL, knots = NULL, ...) : default knots placement along lags has changed since version 2.0.0.
+## See 'file.show(system.file('Changesince200',package='dlnm'))'.
+## See also help(logknots) for setting the knots
+## consistently with the previous versions
+```
+
+```
+## New names:
+## * `` -> `...1`
+## * `` -> `...2`
+## * `` -> `...3`
+## * `` -> `...4`
+```
+
+```
+## Warning in (function (fun = NULL, df = NULL, knots = NULL, ...) : default knots placement along lags has changed since version 2.0.0.
+## See 'file.show(system.file('Changesince200',package='dlnm'))'.
+## See also help(logknots) for setting the knots
+## consistently with the previous versions
+```
+
+```
+## New names:
+## * `` -> `...1`
+## * `` -> `...2`
+## * `` -> `...3`
+## * `` -> `...4`
+```
+
+```
+## [[1]]
+```
+
+![](cc_dlnm_map_files/figure-html/unnamed-chunk-4-1.png)<!-- -->
+
+```
+## 
+## [[2]]
+```
+
+![](cc_dlnm_map_files/figure-html/unnamed-chunk-4-2.png)<!-- -->
+
+```
+## 
+## [[3]]
+```
+
+![](cc_dlnm_map_files/figure-html/unnamed-chunk-4-3.png)<!-- -->
+
+```
+## 
+## [[4]]
+```
+
+![](cc_dlnm_map_files/figure-html/unnamed-chunk-4-4.png)<!-- -->
+
+```
+## 
+## [[5]]
+```
+
+![](cc_dlnm_map_files/figure-html/unnamed-chunk-4-5.png)<!-- -->
+
+```
+## 
+## [[6]]
+```
+
+![](cc_dlnm_map_files/figure-html/unnamed-chunk-4-6.png)<!-- -->
+
+```
+## 
+## [[7]]
+```
+
+![](cc_dlnm_map_files/figure-html/unnamed-chunk-4-7.png)<!-- -->
+
+```
+## 
+## [[8]]
+```
+
+![](cc_dlnm_map_files/figure-html/unnamed-chunk-4-8.png)<!-- -->
+
+```
+## 
+## [[9]]
+```
+
+![](cc_dlnm_map_files/figure-html/unnamed-chunk-4-9.png)<!-- -->
+
+```
+## 
+## [[10]]
+```
+
+![](cc_dlnm_map_files/figure-html/unnamed-chunk-4-10.png)<!-- -->
+
+```
+## 
+## [[11]]
+```
+
+![](cc_dlnm_map_files/figure-html/unnamed-chunk-4-11.png)<!-- -->
+
+```
+## 
+## [[12]]
+```
+
+![](cc_dlnm_map_files/figure-html/unnamed-chunk-4-12.png)<!-- -->
 
 

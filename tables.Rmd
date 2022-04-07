@@ -15,11 +15,9 @@ library(broom)
 library(dlnm)
 library(plotly)
 library(lubridate)
-library(corrplot)
 library(table1)
 library(cowplot)
 library(ggrepel)
-library(fitdistrplus)
 library(viridis)
 library(janitor)
 library(patchwork)
@@ -44,12 +42,12 @@ base_service_df <-
 
 
 ## Outcome table
-```{r}
+```{r, eval = FALSE}
 
 to_table1 <-
   cc_exposure_df %>% 
     filter(case == 1) %>% 
-    dplyr::select(installation_name, source, age, sex, race_ethnic, service, grade, hsi) %>% 
+    dplyr::select(site_name, source, age, sex, race_ethnic, service, grade, hsi) %>% 
        mutate(service = recode(service,
             "A" = "Army",
             "C" = "Coast Guard",
@@ -68,7 +66,7 @@ to_table1 <-
             "M" = "Male",
             "Z" = "Unknown")
             ) %>% 
-  left_join(climate_regions, by = "installation_name") %>% 
+  left_join(climate_regions, by = "site_name") %>% 
   mutate_if(is.character, as.factor) %>% 
             mutate(age = fct_relevel(age, ">=40", after = Inf))
 
@@ -97,7 +95,7 @@ table1::table1(~ factor(hsi) + factor(age) + factor(sex) +
 
 to_table1 <-
   cc_exposure_df %>% 
-    dplyr::select(installation_name, case, source, age, sex, race_ethnic, service, grade, hsi) %>% 
+    dplyr::select(site_name, case, source, age, sex, race_ethnic, service, grade, hsi) %>% 
        mutate(service = recode(service,
             "A" = "Army",
             "C" = "Coast Guard",
@@ -121,8 +119,8 @@ to_table1 <-
                           "1" = "Case")
                       ) %>% 
   left_join(climate_regions %>% 
-              mutate(installation_name = janitor::make_clean_names(installation_name)),
-            by = "installation_name") %>% 
+              mutate(site_name = janitor::make_clean_names(site_name)),
+            by = "site_name") %>% 
   mutate_if(is.character, as.factor) %>% 
             mutate(age = fct_relevel(age, ">=40", after = Inf))
 
@@ -157,10 +155,10 @@ cc_exposure_df %>%
 
 cc_exposure_df %>% 
   filter(case == 1) %>% 
-  group_by(lubridate::year(date), installation_name) %>% 
+  group_by(lubridate::year(date), site_name) %>% 
   count() %>% 
   rename(year = `lubridate::year(date)`) %>% 
-  ggplot(aes(x = year, y = n, colour = installation_name)) +
+  ggplot(aes(x = year, y = n, colour = site_name)) +
       geom_point() +
       geom_line(size = 0.8) +
       theme_bw() +
@@ -231,6 +229,44 @@ or_table_rod
 ```
 
 
+## Mean Annual Temperatures (1998-2019)
+
+```{r}
+
+mean_annual_index_1998_2019 <-
+  daily_indices %>%
+  dplyr::filter(lubridate::year(date) %in% 1998:2019) %>%
+    group_by(site_name) %>% 
+    summarise_at(c("tmp_f_mean", "hi_f_mean", "wbgt_f_mean", "tmp_f_max", "hi_f_max", "wbgt_f_max"), mean) %>%
+    arrange(desc(tmp_f_mean)) %>% 
+    as.data.frame()
+
+mean_annual_index_1998_2019
+
+# write_rds(mean_annual_index_1998_2019, "output/tables/mean_annual_index_1998_2019.rds")
+
+
+## Mean annual index (cases)
+
+mean_index_cases_1998_2019 <-
+  cc_exposure_df %>% 
+   filter(case == 1,
+          lubridate::year(date) %in% 1998:2019) %>% 
+    group_by(site_name) %>% 
+    summarise_at(c("tmp_f_mean", "hi_f_mean", "wbgt_f_mean", "tmp_f_max", "hi_f_max", "wbgt_f_max"), mean) %>%
+    arrange(desc(tmp_f_mean)) %>% 
+    as.data.frame()
+
+mean_index_cases_1998_2019 
+
+# write_rds(mean__index_cases_1998_2019, "output/tables/mean_index_cases_1998_2019.rds")
+
+
+```
+
+
+
+
 ## Mean monthly temperatures
 ```{r}
 
@@ -254,11 +290,18 @@ daily_indices %>%
 ### Counts by service - installation
 ```{r}
 
-base_service_counts <-
-  cc_exposure_df %>% 
+site_counts <-
+  cc_exposure_df %>%
+  filter(case == 1) %>% 
     count(site_name, service) %>% 
-    spread(service, n, fill = 0) 
+    spread(service, n, fill = 0) %>% 
+    rowwise() %>% 
+    mutate(total = sum(c_across(A:N))) %>% 
+  arrange(desc(total)) %>% 
+  as.data.frame()
 
+site_counts 
 ```
+
 
 

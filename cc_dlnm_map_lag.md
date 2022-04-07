@@ -7,36 +7,15 @@ editor_options:
   chunk_output_type: console
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
 
-library(tidyverse)
-library(plotly)
-library(lattice)
-#remotes::install_github("tylermorganwall/rayshader")
-library(rayshader)
-library(dlnm)
-library(survival)
-library(splines)
-library(broom)
-library(weathermetrics)
-library(viridis)
-library(reshape2)
-library(magick)
-library(av)
-library(ggrepel)
-
-citation("dlnm")
-citation("survival")
-```
 
 Case-crossover models (DLNM) mapped over set of index variables - plot lag slices
 
 
 ## Input data
 
-```{r}
 
+```r
 ## cc-exposure df from `case_control_exposures.Rmd`
 
 cc_exposure_df <-
@@ -45,15 +24,14 @@ cc_exposure_df <-
 
 daily_indices <-
   read_rds(file = "data/daily_indices_rod") 
-
 ```
 
 
 
 ## Inputs
 
-```{r}
 
+```r
 # selected_index <- "tmp_f_max"
 
 selected_index <- c("tmp_f_mean", "tmp_f_max", "tmp_f_min", "tmp_f_0600", "hi_f_mean", "hi_f_max", "hi_f_min", "hi_f_0600",
@@ -84,15 +62,14 @@ lag_names <- paste("lag", formatC(lags, width = nchar(max(lags)), flag = "0"),
   sep = "_")
 
 lag_fun <- setNames(paste("dplyr::lag(., ", lags, ")"), lag_names)
-
 ```
 
 
 
 ## Lag Plots
 
-```{r, warning = FALSE}
 
+```r
 cc_dlnm_fun_lag <-  function(selected_index) {
 
 lag_matrix <-
@@ -337,8 +314,97 @@ eval(parse(text = paste0("plot_", selected_index, "_lag_slice_cum")))
 
 
 ## Map function
-```{r, warning = FALSE}
 
+```r
 purrr::map(selected_index, cc_dlnm_fun_lag) 
+```
 
 ```
+## Note: Using an external vector in selections is ambiguous.
+## i Use `all_of(selected_index)` instead of `selected_index` to silence this message.
+## i See <https://tidyselect.r-lib.org/reference/faq-external-vector.html>.
+## This message is displayed once per session.
+```
+
+```
+## [[1]]
+```
+
+![](cc_dlnm_map_lag_files/figure-html/unnamed-chunk-4-1.png)<!-- -->
+
+```
+## 
+## [[2]]
+```
+
+![](cc_dlnm_map_lag_files/figure-html/unnamed-chunk-4-2.png)<!-- -->
+
+```
+## 
+## [[3]]
+```
+
+![](cc_dlnm_map_lag_files/figure-html/unnamed-chunk-4-3.png)<!-- -->
+
+```
+## 
+## [[4]]
+```
+
+![](cc_dlnm_map_lag_files/figure-html/unnamed-chunk-4-4.png)<!-- -->
+
+```
+## 
+## [[5]]
+```
+
+![](cc_dlnm_map_lag_files/figure-html/unnamed-chunk-4-5.png)<!-- -->
+
+```
+## 
+## [[6]]
+```
+
+![](cc_dlnm_map_lag_files/figure-html/unnamed-chunk-4-6.png)<!-- -->
+
+```
+## 
+## [[7]]
+```
+
+![](cc_dlnm_map_lag_files/figure-html/unnamed-chunk-4-7.png)<!-- -->
+
+```
+## 
+## [[8]]
+```
+
+![](cc_dlnm_map_lag_files/figure-html/unnamed-chunk-4-8.png)<!-- -->
+
+```
+## 
+## [[9]]
+```
+
+![](cc_dlnm_map_lag_files/figure-html/unnamed-chunk-4-9.png)<!-- -->
+
+```
+## 
+## [[10]]
+```
+
+![](cc_dlnm_map_lag_files/figure-html/unnamed-chunk-4-10.png)<!-- -->
+
+```
+## 
+## [[11]]
+```
+
+![](cc_dlnm_map_lag_files/figure-html/unnamed-chunk-4-11.png)<!-- -->
+
+```
+## 
+## [[12]]
+```
+
+![](cc_dlnm_map_lag_files/figure-html/unnamed-chunk-4-12.png)<!-- -->

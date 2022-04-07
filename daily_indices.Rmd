@@ -34,6 +34,10 @@ hourly_nldas %>%
 hourly_nldas %>% 
   count(site_name) %>% as.data.frame()
 
+
+daily_indices_rod <-
+  read_rds(file = "data/daily_indices_rod")
+
 ```
 
 
@@ -75,6 +79,69 @@ daily_indices_rod <-
 ```
 
 
+## Inspect hourly indices
+
+```{r}
+hourly_nldas %>% 
+  dplyr::filter(lubridate::year(local_dttm) %in% 1998:2019) %>%
+  summary()
+
+hourly_nldas %>% 
+  dplyr::filter(lubridate::year(local_dttm) %in% 1998:2019) %>%
+    group_by(site_name) %>% 
+    summarise_at(c("tmp_f", "hi_f", "wbgt_f"), mean) %>%
+    arrange(desc(tmp_f)) %>% 
+    as.data.frame()
+```
+
+## Inspect daily indices
+
+```{r}
+
+daily_indices_rod %>% 
+  dplyr::filter(lubridate::year(date) %in% 1998:2019) %>%
+  summary()
 
 
+
+daily_indices_rod %>% 
+  dplyr::filter(lubridate::year(date) %in% 1998:2019,
+                lubridate::month(date) %in% 8) %>%
+    group_by(site_name) %>% 
+    summarise_at(c("tmp_f_mean", "hi_f_mean", "wbgt_f_mean", "tmp_f_max", "hi_f_max", "wbgt_f_max"), mean) %>%
+    arrange(desc(tmp_f_mean)) %>% 
+    as.data.frame()
+
+
+
+
+```
+
+
+## Camp Pendleton check
+!! Temperatures and WBGT appear flipped
+
+```{r, eval = FALSE}
+
+daily_indices_rod %>%
+  filter(site_name %in% "MCB Camp Pendleton",
+         lubridate::year(date) %in% 2018:2019) %>%
+  dplyr::select(site_name, date, tmp_f_mean, tmp_f_max) %>% 
+  pivot_longer(c(-site_name, -date), names_to = "index", values_to = "value") %>% 
+  ggplot(aes(x = date, y = value, color = index)) +
+  geom_point() +
+  geom_line(aes(group = date))
+  
+
+daily_indices_rod %>%
+  filter(site_name %in% "MCB Camp Pendleton",
+         lubridate::year(date) %in% 2018:2019) %>%
+  dplyr::select(site_name, date, wbgt_f_mean, wbgt_f_max) %>% 
+  pivot_longer(c(-site_name, -date), names_to = "index", values_to = "value") %>% 
+  ggplot(aes(x = date, y = value, color = index)) +
+   geom_point() +
+  geom_line(aes(group = date))
+    
+
+```
 

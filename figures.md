@@ -7,28 +7,11 @@ editor_options:
   chunk_output_type: console
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-
-library(tidyverse)
-library(broom)
-library(dlnm)
-library(plotly)
-library(lubridate)
-library(table1)
-library(cowplot)
-library(ggrepel)
-library(viridis)
-library(janitor)
-library(patchwork)
-library(Hmisc)
-library(patchwork)
-
-```
 
 
-```{r}
 
+
+```r
 daily_indices <- read_rds(file = "data/daily_indices_rod")
 
 cc_exposure_df <-
@@ -36,8 +19,6 @@ cc_exposure_df <-
 
 base_service_df <-
   read_rds(file = "data/base_service_df.rds")
-
-
 ```
 
 
@@ -45,8 +26,8 @@ base_service_df <-
 
 
 
-```{r}
 
+```r
 to_density_plot_all <-
   cc_exposure_df %>%
     filter(case == 1) %>% 
@@ -74,22 +55,43 @@ to_density_plot_all <-
 to_density_plot_all %>% 
   filter(Index %in% "hi_f_max",  #32,426
          Value > 103) #4706
+```
 
-
+```
+## # A tibble: 4,706 x 6
+##    site_name    d_event    Index    Value index      type 
+##    <chr>        <date>     <chr>    <dbl> <fct>      <fct>
+##  1 Fort Benning 2011-08-09 hi_f_max  104. Heat Index Max  
+##  2 Fort Benning 2012-07-25 hi_f_max  107. Heat Index Max  
+##  3 Fort Benning 2009-07-16 hi_f_max  104. Heat Index Max  
+##  4 Fort Benning 1999-08-13 hi_f_max  108. Heat Index Max  
+##  5 Fort Benning 2011-08-03 hi_f_max  111. Heat Index Max  
+##  6 Fort Benning 2005-08-22 hi_f_max  104. Heat Index Max  
+##  7 Fort Benning 2005-07-26 hi_f_max  109. Heat Index Max  
+##  8 Fort Benning 2007-08-13 hi_f_max  107  Heat Index Max  
+##  9 Fort Benning 2010-08-03 hi_f_max  105. Heat Index Max  
+## 10 Fort Benning 2011-08-05 hi_f_max  109. Heat Index Max  
+## # ... with 4,696 more rows
 ```
 
 
 
 ### Patchwork density plots: with Celsius scale
-```{r}
 
+```r
 mean_median <- 
   to_density_plot_all %>% 
   group_by(index, type) %>% 
   summarise(mean = mean(Value),
             median = median(Value)) 
+```
 
+```
+## `summarise()` has grouped output by 'index'. You can override using the
+## `.groups` argument.
+```
 
+```r
 density_temp <-
   to_density_plot_all %>% 
     filter(index %in% "Temperature") %>% 
@@ -167,9 +169,12 @@ plot_density_c <-
     theme(legend.position = "bottom")
 
 plot_density_c
+```
 
+![](figures_files/figure-html/unnamed-chunk-3-1.png)<!-- -->
+
+```r
 # ggsave("output/figures/plot_density_c.tiff", width = 9.5, height = 4)
-
 ```
 
 
@@ -181,8 +186,8 @@ plot_density_c
 Filter to case days with WBGT-Max greater than 85 deg F
 
 
-```{r}
 
+```r
 to_scatter <-
   cc_exposure_df %>% 
     dplyr::select(site_name, case, source, age, sex, race_ethnic, service, grade, hsi, region,
@@ -232,13 +237,12 @@ alpha_val <- 0.1
 ellipse_type <- "t"
 point_size <- 0.5
 ellipse_size <- 1.05
-
 ```
 
 #Dual Scale
 
-```{r}
 
+```r
 plot_font_base <- 8
 annotate_size <- 3
 
@@ -341,19 +345,28 @@ plot_scatter_dual <-
     theme(legend.position = "bottom")
 
 plot_scatter_dual
+```
 
+```
+## `geom_smooth()` using formula 'y ~ x'
+## `geom_smooth()` using formula 'y ~ x'
+## `geom_smooth()` using formula 'y ~ x'
+## `geom_smooth()` using formula 'y ~ x'
+## `geom_smooth()` using formula 'y ~ x'
+## `geom_smooth()` using formula 'y ~ x'
+```
+
+![](figures_files/figure-html/unnamed-chunk-5-1.png)<!-- -->
+
+```r
 #ggsave(filename = "output/figures/plot_scatter_c.tiff", device = "tiff", dpi = 700)
-
-
-
-
 ```
 
 
 ### Scatterplot all points (no temp cutoff), Dual Scale
 
-```{r}
 
+```r
 plot_font_base <- 8
 annotate_size <- 3
 
@@ -460,17 +473,29 @@ plot_scatter_dual_full <-
     theme(legend.position = "bottom")
 
 plot_scatter_dual_full
+```
 
+```
+## `geom_smooth()` using formula 'y ~ x'
+## `geom_smooth()` using formula 'y ~ x'
+## `geom_smooth()` using formula 'y ~ x'
+## `geom_smooth()` using formula 'y ~ x'
+## `geom_smooth()` using formula 'y ~ x'
+## `geom_smooth()` using formula 'y ~ x'
+```
+
+![](figures_files/figure-html/unnamed-chunk-6-1.png)<!-- -->
+
+```r
 #ggsave(filename = "output/figures/plot_scatter_c_full.tiff", device = "tiff", dpi = 700)
-
 ```
 
 ## Figure 4. Overall HSI odds ratios
 Patchwork plot
 
 
-```{r, eval = FALSE}
 
+```r
 # Read in ggplot objects
 
 plot_mean_temp <-
@@ -500,7 +525,6 @@ plot_df <-
 plot_df
 
 #ggsave(filename = "output/figures/fig4_print.tiff", width = 7.58, height = 6.82, units = "in", device = "tiff", dpi = 500)
-
 ```
 
 
